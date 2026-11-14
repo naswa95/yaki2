@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@theme{--color-ink:#17233B;--color-bg:#FFF9F2;--color-mute:#8991A3;--color-acc:#526BFF;--color-coral:#FF786B;--color-sun:#FFD84D;--color-ok:#35B77A;--color-ko:#EF6464;--font-sans:Inter,system-ui,sans-serif}
+body{background:#FFF9F2;color:#17233B;-webkit-tap-highlight-color:transparent}
+h1,h2,h3,.f{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;letter-spacing:-.04em}
+@keyframes mq{to{transform:translateX(-50%)}}@keyframes pop{from{opacity:0;transform:translateX(40px)}}
