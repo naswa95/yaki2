@@ -18,7 +18,7 @@ const btn = 'rounded-full px-6 py-4 font-bold active:translate-y-0.5 active:scal
 const go = `${btn} bg-ink text-sun`
 const inp = 'w-full rounded-[20px] bg-white border-2 border-transparent focus:border-ink px-4 py-4 text-base font-semibold outline-none'
 const card = 'bg-white rounded-[30px] p-5 space-y-3'
-const fmt = (d: string) => new Date(d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+const fmt = (d: string) => { const x = new Date(d + 'T12:00'); return isNaN(x.getTime()) ? 'Date à définir' : x.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) }
 const todayParis = () => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date())
 const dayDiff = (a: string, b: string) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 864e5)
 const em = (n: string) => /bowl/i.test(n) ? '🎳' : /resto|manger|burger/i.test(n) ? '🍜' : /cin/i.test(n) ? '🎬' : /foot/i.test(n) ? '⚽' : /kart/i.test(n) ? '🏎️' : /parc/i.test(n) ? '🎢' : /soir/i.test(n) ? '🎉' : '✨'
@@ -43,12 +43,12 @@ function boom() {
 function Loader() { return <div className="fixed inset-0 z-[80] bg-bg flex flex-col items-center justify-center gap-4 p-8 text-center"><img src={LOGO_H} alt="yaki" className="h-16 w-auto max-w-[70%] object-contain" style={{ animation: 'pulse2 1.4s ease-in-out infinite' }} /><p className="font-bold">Chargement — ça prendra quelques secondes</p></div> }
 function Auth({ onDone }: { onDone: () => void }) {
   const [mode, setMode] = useState<'register' | 'login'>('register'), [f, setF] = useState({ prenom: '', pin: '', login: '' })
-  const [err, setErr] = useState(''), [wait, setWait] = useState(false), [created, setCreated] = useState('')
-  const run = async () => { setWait(true); setErr(''); try { const r = await api(mode, { ...f, prenom: f.prenom.split('#')[0].trim() }); localStorage.setItem('yaki_token', r.token); mode === 'register' ? setCreated(r.me.login) : onDone() } catch (e: any) { setErr(e.message) } finally { setWait(false) } }
-  if (created) return <div className="p-6 pt-20 max-w-md mx-auto space-y-5"><div className="flex justify-center"><Logo s="text-5xl" /></div><h2 className="text-4xl leading-none">Voici ton identifiant. Note-le !</h2><div className="bg-sun rounded-[30px] p-5 -rotate-1"><p className="text-sm">Il sert à te reconnecter</p><p className="f text-4xl">{created}</p></div><button className={`${go} w-full text-lg`} onClick={onDone}>C'est noté</button></div>
+  const [err, setErr] = useState(''), [wait, setWait] = useState(false), [created, setCreated] = useState(''), [pinShow, setPinShow] = useState('')
+  const run = async () => { setWait(true); setErr(''); try { const r = await api(mode, { ...f, prenom: f.prenom.split('#')[0].trim() }); localStorage.setItem('yaki_token', r.token); mode === 'register' ? (setCreated(r.me.login), setPinShow(r.pin || '')) : onDone() } catch (e: any) { setErr(e.message) } finally { setWait(false) } }
+  if (created) return <div className="p-6 pt-20 max-w-md mx-auto space-y-5"><div className="flex justify-center"><Logo s="text-5xl" /></div><h2 className="text-4xl leading-none">Voici ton identifiant et ton code secret</h2><div className="bg-sun rounded-[30px] p-5 -rotate-1 space-y-1"><p className="text-sm">Ton identifiant pour te reconnecter</p><p className="f text-4xl">{created}</p></div><div className="bg-ink text-white rounded-[30px] p-5 rotate-1 space-y-1"><p className="text-sm text-sun">Ton code secret</p><p className="f text-4xl tracking-widest">{pinShow}</p></div><p className="text-sm text-mute">⚠️ Note-les dans ton bloc-notes pour ne pas les perdre : ils s'affichent une seule fois et servent à te reconnecter sur un autre appareil. Ne les partage pas.</p><button className={`${go} w-full text-lg`} onClick={onDone}>C'est noté</button></div>
   return <div className="p-6 pt-20 max-w-md mx-auto space-y-4">{wait && <Loader />}<div className="flex justify-center"><Logo s="text-5xl" /></div><h2 className="text-4xl leading-none pt-4">{mode === 'register' ? <>Y'a qui pour <span className="text-acc">sortir ?</span></> : 'Content de te revoir'}</h2>
     {mode === 'register' ? <input className={inp} placeholder="Ton prénom (juste le prénom)" value={f.prenom} onChange={e => setF({ ...f, prenom: e.target.value.split('#')[0] })} /> : <input className={inp} placeholder="Prénom#numéro (ex : Anas#1234)" value={f.login} onChange={e => setF({ ...f, login: e.target.value })} />}
-    <input className={inp} type="password" inputMode="numeric" placeholder="Code secret (4 à 8 chiffres)" value={f.pin} onChange={e => setF({ ...f, pin: e.target.value })} />
+    {mode === 'login' && <input className={inp} type="password" inputMode="numeric" placeholder="Code secret" value={f.pin} onChange={e => setF({ ...f, pin: e.target.value })} />}
     {err && <p className="text-ko text-sm font-semibold">{err}</p>}<button disabled={wait} onClick={run} className={`${go} w-full text-lg`}>{wait ? '…' : mode === 'register' ? 'C\'est parti' : 'Me connecter'}</button>
     <button className={`${btn} w-full bg-white`} onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? "J'ai déjà un compte" : 'Créer un compte'}</button></div>
 }
@@ -74,7 +74,7 @@ function Onb({ st, first, act, done }: { st: St; first: boolean; act: Act; done:
 }
 
 const eur = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
-const when = (s: Sortie) => s.type === 'voyage' && s.dateFin ? `${fmt(s.date)} → ${fmt(s.dateFin)}` : fmt(s.date) + (s.debut ? ' · ' + s.debut : '')
+const when = (s: Sortie) => s.type === 'voyage' && s.dateFin ? `${fmt(s.date)} → ${fmt(s.dateFin)}` : fmt(s.date) + (/^\d{2}:\d{2}$/.test(s.debut) ? ' · ' + s.debut : '')
 const last = (s: Sortie) => s.dateFin || s.date
 function bal(st: St, s: Sortie): [string, string, number][] {
   const m: Record<string, number> = {}
@@ -137,7 +137,7 @@ function Home({ st, gid, setGid, act, onOpen, go: goTab }: { st: St; gid: string
   const todo = live.filter(s => !st.participations.some(p => p.sortieId === s.id && p.userId === st.me.id)), up = [...live].sort((a, b) => a.date.localeCompare(b.date)), nx = up[0]
   const mine = st.sorties.filter(s => s.groupeId === gid).sort((a, b) => a.date.localeCompare(b.date)); let owe = 0, due = 0
   st.sorties.forEach(s => bal(st, s).forEach(x => { if (x[0] === st.me.id) owe += x[2]; if (x[1] === st.me.id) due += x[2] }))
-  const dj = nx ? Math.max(0, dayDiff(today, nx.date)) : 0, tile = 'bg-white rounded-[26px] p-4 space-y-1.5'
+  const dj = nx ? Math.max(0, dayDiff(today, nx.date)) || 0 : 0, tile = 'bg-white rounded-[26px] p-4 space-y-1.5'
   const rp = async (s: Sortie, x: string) => { if (await act('respond', { sortieId: s.id, reponse: x }, 'Réponse envoyée') && x === 'disponible') boom() }
   return <div className="p-5 space-y-4"><h1 className="text-5xl sm:text-6xl leading-[.95] pt-2">Salut <span className="text-acc">{st.me.prenom}</span> 👋</h1>
     {!st.groupes.length && <div className={card}><p>Tu n'as pas encore de groupe. Crée le tien ou rejoins celui de tes amis avec son code secret.</p><button className={go} onClick={() => goTab('groups')}>Créer ou rejoindre</button></div>}
@@ -164,14 +164,14 @@ function Month({ off, setOff, cell, onPick }: { off: number; setOff: (n: number)
 }
 
 function Form({ st, gid, setGid, act, edit, date0, close }: { st: St; gid: string; setGid: (g: string) => void; act: Act; edit: Sortie | null; date0: string; close: () => void }) {
-  const [f, setF] = useState<any>(edit ? { ...edit, budget: edit.budget || '' } : { type: 'sortie', nom: '', date: date0, dateFin: '', debut: '', fin: '', lieu: '', description: '', lien: '', budget: '' }), [off, setOff] = useState(0)
-  const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value }), g = edit?.groupeId ?? gid, bz = busy(st, g, f.date, f.debut)
+  const [f, setF] = useState<any>(edit ? { ...edit, budget: edit.budget || '' } : { type: 'sortie', nom: '', date: date0, dateFin: '', debut: '', fin: '', lieu: '', description: '', lien: '', budget: '' }), [off, setOff] = useState(0), [fg, setFg] = useState(edit?.groupeId ?? gid)
+  const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value }), g = edit?.groupeId ?? fg, bz = busy(st, g, f.date, f.debut)
   const pick = (k: string) => { if (f.type === 'sortie') setF({ ...f, date: k, dateFin: '' }); else if (!f.date || f.dateFin) setF({ ...f, date: k, dateFin: '' }); else if (k < f.date) setF({ ...f, date: k }); else setF({ ...f, dateFin: k }) }
   if (!g) return <Sheet onClose={close}><p>Rejoins d'abord un groupe pour lancer une idée.</p></Sheet>
   const nj = f.date && f.dateFin ? Math.round((new Date(f.dateFin).getTime() - new Date(f.date).getTime()) / 864e5) + 1 : 0
   return <Sheet onClose={close}><h2 className="text-4xl leading-none pr-10">{edit ? 'Modifier' : <>On fait <span className="text-acc">quoi ?</span></>}</h2>
     <div className="grid grid-cols-2 bg-white rounded-full p-1.5">{['sortie', 'voyage'].map(t => <button key={t} onClick={() => setF({ ...f, type: t, dateFin: '' })} className={`rounded-full py-3 font-bold capitalize ${f.type === t ? 'bg-ink text-sun' : ''}`}>{t}</button>)}</div>
-    {!edit && st.groupes.length > 1 && <select className={inp} value={gid} onChange={e => setGid(e.target.value)}>{st.groupes.map(x => <option key={x.id} value={x.id}>{x.nom}</option>)}</select>}
+    {!edit && <div className="space-y-2"><p className="text-sm font-bold text-mute">Pour quel groupe ?</p><div className="flex flex-wrap gap-2">{st.groupes.map(x => <button key={x.id} onClick={() => setFg(x.id)} className={`rounded-full px-4 py-2.5 text-sm font-bold ${x.id === fg ? 'bg-ink text-white' : 'bg-white'}`}>{x.nom}</button>)}</div></div>}
     <input className={inp} placeholder="Bowling, resto, week-end à Londres…" value={f.nom} onChange={set('nom')} />
     <div className={card}><Month off={off} setOff={setOff} onPick={pick} cell={k => { const on = k === f.date || k === f.dateFin || (f.date && f.dateFin && k > f.date && k < f.dateFin); return { bg: on ? '#17233B' : '#FFF9F2', fg: on ? '#FFD84D' : undefined } }} />
       <p className="text-sm text-mute">{!f.date ? (f.type === 'voyage' ? 'Touche le premier jour, puis le dernier.' : 'Touche le jour.') : f.type === 'voyage' ? (nj ? `${fmt(f.date)} → ${fmt(f.dateFin)} · ${nj} jours` : fmt(f.date) + ' · choisis le dernier jour') : fmt(f.date)}</p></div>

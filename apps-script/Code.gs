@@ -10,9 +10,10 @@ Activites:['id','groupeId','userId','type','sortieId','date']};
 const STATUTS=['proposition','confirmée','annulée','terminée'];
 function setup(){const ss=SpreadsheetApp.getActive();Object.keys(SH).forEach(n=>{let s=ss.getSheetByName(n)||ss.insertSheet(n);s.clear();s.getRange(1,1,s.getMaxRows(),SH[n].length).setNumberFormat('@');s.getRange(1,1,1,SH[n].length).setValues([SH[n]]).setFontWeight('bold');s.setFrozenRows(1)})}
 const sh=n=>SpreadsheetApp.getActive().getSheetByName(n);
-function rows(n){const v=sh(n).getDataRange().getValues();const h=v.shift();return v.map((r,i)=>{const o={_row:i+2};h.forEach((k,j)=>o[k]=String(r[j]));return o}).filter(o=>o[h[0]]!=='')}
-const add=(n,o)=>sh(n).appendRow(SH[n].map(k=>o[k]==null?'':o[k]));
-const put=(n,r,o)=>sh(n).getRange(r,1,1,SH[n].length).setValues([SH[n].map(k=>o[k]==null?'':o[k])]);
+const cv=v=>v instanceof Date?Utilities.formatDate(v,'Europe/Paris',v.getFullYear()<1950?'HH:mm':'yyyy-MM-dd'):String(v);
+function rows(n){const v=sh(n).getDataRange().getValues();const h=v.shift();return v.map((r,i)=>{const o={_row:i+2};h.forEach((k,j)=>o[k]=cv(r[j]));return o}).filter(o=>o[h[0]]!=='')}
+const add=(n,o)=>{const t=sh(n),g=t.getRange(t.getLastRow()+1,1,1,SH[n].length);g.setNumberFormat('@');g.setValues([SH[n].map(k=>o[k]==null?'':o[k])])};
+const put=(n,r,o)=>{const g=sh(n).getRange(r,1,1,SH[n].length);g.setNumberFormat('@');g.setValues([SH[n].map(k=>o[k]==null?'':o[k])])};
 const now=()=>Utilities.formatDate(new Date(),'Europe/Paris',"yyyy-MM-dd'T'HH:mm:ss");
 const hash=s=>Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,s));
 const clean=(s,max)=>String(s==null?'':s).replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,max);
@@ -29,13 +30,14 @@ const pj=s=>{try{return JSON.parse(s)||{}}catch(e){return{}}};
 const log=(g,u,t,s)=>add('Activites',{id:uid(),groupeId:g,userId:u,type:t,sortieId:s||'',date:now()});
 const isMember=(me,g)=>rows('Adhesions').some(a=>a.groupeId===g&&a.userId===me.id);
 const need=(me,g)=>{if(!isMember(me,g))fail('Tu ne fais pas partie de ce groupe')};
+function gthrottle(){const c=CacheService.getScriptCache(),n=+c.get('g')||0;if(n>=30)fail('Trop de tentatives, réessaie dans 10 min');return()=>c.put('g',String(n+1),600)}
 function throttle(k){const c=CacheService.getScriptCache(),n=+c.get(k)||0;if(n>=5)fail("Trop d'essais, réessaie dans 10 min");return ()=>c.put(k,String(n+1),600)}
 const H={
-register(b){const prenom=clean(String(b.prenom).split('#')[0],30);if(!prenom)fail('Prénom requis');if(!/^\d{4,8}$/.test(String(b.pin)))fail('Code : 4 à 8 chiffres');
+register(b){const prenom=clean(String(b.prenom).split('#')[0],30);if(!prenom)fail('Prénom requis');
  const all=rows('Membres');let login;do{login=prenom.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g,'')+'#'+Math.floor(1000+Math.random()*9000)}while(all.some(r=>r.login===login));
- const sel=uid(),m={id:uid(),prenom,login,sel,pinHash:hash(sel+b.pin),role:'membre',creation:now(),modif:now()};add('Membres',m);m._row=sh('Membres').getLastRow();return{token:newToken(m),me:pub(m)}},
-login(b){const nl=String(b.login).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f\s]/g,''),k='f'+nl,bump=throttle(k);const m=rows('Membres').find(r=>r.login.toLowerCase()===nl);
- if(!m||m.pinHash!==hash(m.sel+b.pin)){bump();fail('Identifiant ou code incorrect')}CacheService.getScriptCache().remove(k);return{token:newToken(m),me:pub(m)}},
+ const pin=String(Math.floor(100000+Math.random()*900000)),sel=uid(),m={id:uid(),prenom,login,sel,pinHash:hash(sel+pin),role:'membre',creation:now(),modif:now()};add('Membres',m);m._row=sh('Membres').getLastRow();return{token:newToken(m),me:pub(m),pin}},
+login(b){const gbump=gthrottle(),nl=String(b.login).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f\s]/g,''),k='f'+nl,bump=throttle(k);const m=rows('Membres').find(r=>r.login.toLowerCase()===nl);
+ if(!m||(m.pinHash&&m.pinHash!==hash(m.sel+String(b.pin||'')))){bump();gbump();fail('Identifiant ou code incorrect')}CacheService.getScriptCache().remove(k);return{token:newToken(m),me:pub(m)}},
 state(b,me){const ad=rows('Adhesions'),mine=ad.filter(a=>a.userId===me.id).map(a=>a.groupeId),inG=a=>mine.indexOf(a.groupeId)>=0;
  const groupes=rows('Groupes').filter(g=>mine.indexOf(g.id)>=0).map(g=>({id:g.id,nom:g.nom,n:ad.filter(a=>a.groupeId===g.id).length}));
  const adh=ad.filter(inG).map(a=>({groupeId:a.groupeId,userId:a.userId})),uids=adh.map(a=>a.userId);
