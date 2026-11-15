@@ -1,6 +1,7 @@
 @import "tailwindcss";
-@theme{--color-ink:#0C1742;--color-bg:#FFF4E6;--color-mute:#7A83A0;--color-acc:#4169F5;--color-coral:#FF705F;--color-peach:#FFDCCB;--color-ok:#35B77A;--color-ko:#EF6464;--font-sans:Inter,system-ui,sans-serif}
-body{background:#FFF4E6 radial-gradient(#0C174214 1.3px,transparent 1.3px) 0 0/22px 22px;color:#0C1742;-webkit-tap-highlight-color:transparent}
+@theme{--color-ink:#0C1742;--color-bg:#FFF4E6;--color-mute:#7A83A0;--color-acc:#4169F5;--color-coral:#FF705F;--color-peach:#FFDCCB;--color-sun:#FF705F;--color-ok:#35B77A;--color-ko:#EF6464;--font-sans:Inter,system-ui,sans-serif}
+body{background:radial-gradient(circle at 90% 4%,#FFE0D2 0,transparent 34%),radial-gradient(circle at 0% 45%,#FFE8D0 0,transparent 32%),radial-gradient(circle at 100% 85%,#E6ECFF 0,transparent 30%),#FFF4E6;background-attachment:fixed;color:#0C1742;-webkit-tap-highlight-color:transparent}
 h1,h2,h3,.f{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;letter-spacing:-.04em}
 @keyframes mq{to{transform:translateX(-50%)}}@keyframes pop{from{opacity:0;transform:translateX(40px)}}
 @keyframes pulse2{0%,100%{opacity:1}50%{opacity:0}}@keyframes rise{from{opacity:0;transform:translateY(22px) scale(.96)}}
+.hl{background:#DCE5FF;border-radius:.55em;padding:.02em .28em}
