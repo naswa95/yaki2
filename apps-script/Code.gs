@@ -35,7 +35,7 @@ function throttle(k){const c=CacheService.getScriptCache(),n=+c.get(k)||0;if(n>=
 const H={
 register(b){const prenom=clean(String(b.prenom).split('#')[0],30);if(!prenom)fail('Prénom requis');
  const all=rows('Membres');let login;do{login=prenom.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g,'')+'#'+Math.floor(1000+Math.random()*9000)}while(all.some(r=>r.login===login));
- const pin=String(Math.floor(100000+Math.random()*900000)),sel=uid(),m={id:uid(),prenom,login,sel,pinHash:hash(sel+pin),role:'membre',creation:now(),modif:now()};add('Membres',m);m._row=sh('Membres').getLastRow();return{token:newToken(m),me:pub(m),pin}},
+ const pin=String(Math.floor(1000+Math.random()*9000)),sel=uid(),m={id:uid(),prenom,login,sel,pinHash:hash(sel+pin),role:'membre',creation:now(),modif:now()};add('Membres',m);m._row=sh('Membres').getLastRow();return{token:newToken(m),me:pub(m),pin}},
 login(b){const gbump=gthrottle(),nl=String(b.login).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f\s]/g,''),k='f'+nl,bump=throttle(k);const m=rows('Membres').find(r=>r.login.toLowerCase()===nl);
  if(!m||(m.pinHash&&m.pinHash!==hash(m.sel+String(b.pin||'')))){bump();gbump();fail('Identifiant ou code incorrect')}CacheService.getScriptCache().remove(k);return{token:newToken(m),me:pub(m)}},
 state(b,me){const ad=rows('Adhesions'),mine=ad.filter(a=>a.userId===me.id).map(a=>a.groupeId),inG=a=>mine.indexOf(a.groupeId)>=0;
