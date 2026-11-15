@@ -13,7 +13,7 @@ const sh=n=>SpreadsheetApp.getActive().getSheetByName(n);
 function rows(n){const v=sh(n).getDataRange().getValues();const h=v.shift();return v.map((r,i)=>{const o={_row:i+2};h.forEach((k,j)=>o[k]=String(r[j]));return o}).filter(o=>o[h[0]]!=='')}
 const add=(n,o)=>sh(n).appendRow(SH[n].map(k=>o[k]==null?'':o[k]));
 const put=(n,r,o)=>sh(n).getRange(r,1,1,SH[n].length).setValues([SH[n].map(k=>o[k]==null?'':o[k])]);
-const now=()=>new Date().toISOString();
+const now=()=>Utilities.formatDate(new Date(),'Europe/Paris',"yyyy-MM-dd'T'HH:mm:ss");
 const hash=s=>Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,s));
 const clean=(s,max)=>String(s==null?'':s).replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,max);
 const fail=m=>{throw new Error(m)};
@@ -31,26 +31,26 @@ const isMember=(me,g)=>rows('Adhesions').some(a=>a.groupeId===g&&a.userId===me.i
 const need=(me,g)=>{if(!isMember(me,g))fail('Tu ne fais pas partie de ce groupe')};
 function throttle(k){const c=CacheService.getScriptCache(),n=+c.get(k)||0;if(n>=5)fail("Trop d'essais, réessaie dans 10 min");return ()=>c.put(k,String(n+1),600)}
 const H={
-register(b){const prenom=clean(b.prenom,30);if(!prenom)fail('Prénom requis');if(!/^\d{4,8}$/.test(String(b.pin)))fail('Code : 4 à 8 chiffres');
+register(b){const prenom=clean(String(b.prenom).split('#')[0],30);if(!prenom)fail('Prénom requis');if(!/^\d{4,8}$/.test(String(b.pin)))fail('Code : 4 à 8 chiffres');
  const all=rows('Membres');let login;do{login=prenom.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g,'')+'#'+Math.floor(1000+Math.random()*9000)}while(all.some(r=>r.login===login));
  const sel=uid(),m={id:uid(),prenom,login,sel,pinHash:hash(sel+b.pin),role:'membre',creation:now(),modif:now()};add('Membres',m);m._row=sh('Membres').getLastRow();return{token:newToken(m),me:pub(m)}},
-login(b){const k='f'+String(b.login).toLowerCase(),bump=throttle(k);const m=rows('Membres').find(r=>r.login.toLowerCase()===String(b.login).toLowerCase().trim());
+login(b){const nl=String(b.login).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f\s]/g,''),k='f'+nl,bump=throttle(k);const m=rows('Membres').find(r=>r.login.toLowerCase()===nl);
  if(!m||m.pinHash!==hash(m.sel+b.pin)){bump();fail('Identifiant ou code incorrect')}CacheService.getScriptCache().remove(k);return{token:newToken(m),me:pub(m)}},
 state(b,me){const ad=rows('Adhesions'),mine=ad.filter(a=>a.userId===me.id).map(a=>a.groupeId),inG=a=>mine.indexOf(a.groupeId)>=0;
  const groupes=rows('Groupes').filter(g=>mine.indexOf(g.id)>=0).map(g=>({id:g.id,nom:g.nom,n:ad.filter(a=>a.groupeId===g.id).length}));
  const adh=ad.filter(inG).map(a=>({groupeId:a.groupeId,userId:a.userId})),uids=adh.map(a=>a.userId);
  const sorties=rows('Sorties').filter(inG).map(s=>({id:s.id,groupeId:s.groupeId,nom:s.nom,date:s.date,debut:s.debut,fin:s.fin,lieu:s.lieu,description:s.description,lien:s.lien,organisateur:s.organisateur,statut:s.statut,type:s.type||'sortie',dateFin:s.dateFin,budget:+s.budget||0,compteur:s.compteur==='1'})),ids=sorties.map(s=>s.id);
  return{me:pub(me),groupes,adhesions:adh,membres:rows('Membres').filter(m=>uids.indexOf(m.id)>=0).map(m=>{const p=pj(m.profil);return{id:m.id,prenom:m.prenom,days:p.days||[],hrs:p.hrs||[],likes:p.likes||[]}}),
- dispos:rows('Dispos').filter(d=>uids.indexOf(d.userId)>=0).map(d=>({userId:d.userId,jour:+d.jour,debut:d.debut,fin:d.fin,type:d.type})),sorties,
+ sorties,
  depenses:rows('Depenses').filter(d=>ids.indexOf(d.sortieId)>=0).map(d=>({id:d.id,sortieId:d.sortieId,libelle:d.libelle,montant:+d.montant,payeur:d.payeur,parts:d.parts.split(',')})),
- participations:rows('Participations').filter(p=>ids.indexOf(p.sortieId)>=0).map(p=>({sortieId:p.sortieId,userId:p.userId,reponse:p.reponse})),
- activites:rows('Activites').filter(inG).slice(-30).reverse().map(a=>({groupeId:a.groupeId,userId:a.userId,type:a.type,sortieId:a.sortieId,date:a.date}))}},
+ participations:rows('Participations').filter(p=>ids.indexOf(p.sortieId)>=0).map(p=>({sortieId:p.sortieId,userId:p.userId,reponse:p.reponse}))}},
 groupCreate(b,me){const nom=clean(b.nom,40),code=String(b.code||'');if(nom.length<2)fail('Nom trop court');if(code.length<4||code.length>20)fail('Code : 4 à 20 caractères');
  if(rows('Groupes').some(g=>g.nom.toLowerCase()===nom.toLowerCase()))fail('Ce nom de groupe existe déjà');
  const sel=uid(),g={id:uid(),nom,sel,codeHash:hash(sel+code),createur:me.id,creation:now()};add('Groupes',g);add('Adhesions',{groupeId:g.id,userId:me.id,date:now()});log(g.id,me.id,'création du groupe');return{id:g.id}},
 groupSearch(b){const q=clean(b.q,40).toLowerCase();if(q.length<2)return[];return rows('Groupes').filter(g=>g.nom.toLowerCase().indexOf(q)>=0).slice(0,10).map(g=>({id:g.id,nom:g.nom}))},
 groupJoin(b,me){const g=rows('Groupes').find(r=>r.id===b.groupeId);if(!g)fail('Groupe introuvable');const k='j'+me.id,bump=throttle(k);
  if(g.codeHash!==hash(g.sel+String(b.code||''))){bump();fail('Code incorrect')}if(!isMember(me,g.id)){add('Adhesions',{groupeId:g.id,userId:me.id,date:now()});log(g.id,me.id,'a rejoint le groupe')}return{id:g.id}},
+groupInfo(b){const g=rows('Groupes').find(r=>r.id===b.id);if(!g)fail('Groupe introuvable');return{id:g.id,nom:g.nom}},
 groupLeave(b,me){const a=rows('Adhesions').find(x=>x.groupeId===b.groupeId&&x.userId===me.id);if(a)sh('Adhesions').deleteRow(a._row);return{}},
 sortieSave(b,me){const nom=clean(b.nom,80);if(!nom)fail('Nom requis');if(!/^\d{4}-\d{2}-\d{2}$/.test(b.date))fail('Date invalide');
  const t=v=>/^\d{2}:\d{2}$/.test(v)?v:'',lien=/^https?:\/\//.test(b.lien||'')?clean(b.lien,300):'';

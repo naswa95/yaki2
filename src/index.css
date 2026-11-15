@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @theme{--color-ink:#17233B;--color-bg:#FFF9F2;--color-mute:#8991A3;--color-acc:#526BFF;--color-coral:#FF786B;--color-sun:#FFD84D;--color-ok:#35B77A;--color-ko:#EF6464;--font-sans:Inter,system-ui,sans-serif}
-body{background:#FFF9F2;color:#17233B;-webkit-tap-highlight-color:transparent}
+body{background:#FFF9F2 radial-gradient(#17233B14 1.3px,transparent 1.3px) 0 0/22px 22px;color:#17233B;-webkit-tap-highlight-color:transparent}
 h1,h2,h3,.f{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;letter-spacing:-.04em}
 @keyframes mq{to{transform:translateX(-50%)}}@keyframes pop{from{opacity:0;transform:translateX(40px)}}
+@keyframes pulse2{0%,100%{opacity:1}50%{opacity:0}}@keyframes rise{from{opacity:0;transform:translateY(22px) scale(.96)}}
+h1 .text-acc{background:linear-gradient(transparent 62%,#FFD84D 62%);padding:0 .12em}

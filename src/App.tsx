@@ -19,10 +19,12 @@ const go = `${btn} bg-ink text-sun`
 const inp = 'w-full rounded-[20px] bg-white border-2 border-transparent focus:border-ink px-4 py-4 text-base font-semibold outline-none'
 const card = 'bg-white rounded-[30px] p-5 space-y-3'
 const fmt = (d: string) => new Date(d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+const todayParis = () => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date())
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 864e5)
 const em = (n: string) => /bowl/i.test(n) ? '🎳' : /resto|manger|burger/i.test(n) ? '🍜' : /cin/i.test(n) ? '🎬' : /foot/i.test(n) ? '⚽' : /kart/i.test(n) ? '🏎️' : /parc/i.test(n) ? '🎢' : /soir/i.test(n) ? '🎉' : '✨'
 const Av = ({ n }: { n: string }) => <span style={{ background: COL[(n.charCodeAt(0) || 0) % 4] }} className="inline-flex w-8 h-8 items-center justify-center rounded-full text-white font-extrabold text-sm shrink-0">{(n[0] || '?').toUpperCase()}</span>
 const Pill = ({ n }: { n: string }) => <span className="inline-flex items-center gap-1.5 bg-bg rounded-full pr-3 text-sm font-semibold"><Av n={n} />{n}</span>
-const Logo = ({ s = 'text-3xl' }: { s?: string; img?: string }) => <img src={LOGO_H} alt="yaki" className={s === 'text-3xl' ? 'h-9' : s === 'text-5xl' ? 'h-14' : 'h-16'} />
+const Logo = ({ s = 'text-3xl' }: { s?: string; img?: string }) => <img src={LOGO_H} alt="yaki" className={`w-auto max-w-full object-contain ${s === 'text-3xl' ? 'h-9' : s === 'text-5xl' ? 'h-14' : 'h-16'}`} />
 const membersOf = (st: St, g: string) => st.adhesions.filter(a => a.groupeId === g).map(a => a.userId)
 const nameOf = (st: St, id: string) => st.membres.find(m => m.id === id)?.prenom ?? '?'
 function rep(st: St, s: Sortie) {
@@ -38,16 +40,17 @@ function boom() {
   const f = () => { x.clearRect(0, 0, c.width, c.height); P.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .5; x.fillStyle = p.c; x.fillRect(p.x, p.y, p.r, p.r * 1.6) }); if (++n < 60) requestAnimationFrame(f); else c.remove() }; f()
 }
 
+function Loader() { return <div className="fixed inset-0 z-[80] bg-bg flex flex-col items-center justify-center gap-4 p-8 text-center"><img src={LOGO_H} alt="yaki" className="h-16 w-auto max-w-[70%] object-contain" style={{ animation: 'pulse2 1.4s ease-in-out infinite' }} /><p className="font-bold">Chargement — ça prendra quelques secondes</p></div> }
 function Auth({ onDone }: { onDone: () => void }) {
   const [mode, setMode] = useState<'register' | 'login'>('register'), [f, setF] = useState({ prenom: '', pin: '', login: '' })
   const [err, setErr] = useState(''), [wait, setWait] = useState(false), [created, setCreated] = useState('')
-  const run = async () => { setWait(true); setErr(''); try { const r = await api(mode, f); localStorage.setItem('yaki_token', r.token); mode === 'register' ? setCreated(r.me.login) : onDone() } catch (e: any) { setErr(e.message) } finally { setWait(false) } }
-  if (created) return <div className="p-6 pt-20 max-w-md mx-auto space-y-5"><Logo s="text-5xl" img="w-16 h-16" /><h2 className="text-4xl leading-none">Voici ton identifiant. Note-le !</h2><div className="bg-sun rounded-[30px] p-5 -rotate-1"><p className="text-sm">Il sert à te reconnecter</p><p className="f text-4xl">{created}</p></div><button className={`${go} w-full text-lg`} onClick={onDone}>C'est noté</button></div>
-  return <div className="p-6 pt-20 max-w-md mx-auto space-y-4"><Logo s="text-5xl" img="w-16 h-16" /><h2 className="text-4xl leading-none pt-4">{mode === 'register' ? <>Y'a qui pour <span className="text-acc">sortir ?</span></> : 'Content de te revoir'}</h2>
-    {mode === 'register' ? <input className={inp} placeholder="Ton prénom" value={f.prenom} onChange={e => setF({ ...f, prenom: e.target.value })} /> : <input className={inp} placeholder="Identifiant (ex : anas#4821)" value={f.login} onChange={e => setF({ ...f, login: e.target.value })} />}
+  const run = async () => { setWait(true); setErr(''); try { const r = await api(mode, { ...f, prenom: f.prenom.split('#')[0].trim() }); localStorage.setItem('yaki_token', r.token); mode === 'register' ? setCreated(r.me.login) : onDone() } catch (e: any) { setErr(e.message) } finally { setWait(false) } }
+  if (created) return <div className="p-6 pt-20 max-w-md mx-auto space-y-5"><div className="flex justify-center"><Logo s="text-5xl" /></div><h2 className="text-4xl leading-none">Voici ton identifiant. Note-le !</h2><div className="bg-sun rounded-[30px] p-5 -rotate-1"><p className="text-sm">Il sert à te reconnecter</p><p className="f text-4xl">{created}</p></div><button className={`${go} w-full text-lg`} onClick={onDone}>C'est noté</button></div>
+  return <div className="p-6 pt-20 max-w-md mx-auto space-y-4">{wait && <Loader />}<div className="flex justify-center"><Logo s="text-5xl" /></div><h2 className="text-4xl leading-none pt-4">{mode === 'register' ? <>Y'a qui pour <span className="text-acc">sortir ?</span></> : 'Content de te revoir'}</h2>
+    {mode === 'register' ? <input className={inp} placeholder="Ton prénom (juste le prénom)" value={f.prenom} onChange={e => setF({ ...f, prenom: e.target.value.split('#')[0] })} /> : <input className={inp} placeholder="Prénom#numéro (ex : Anas#1234)" value={f.login} onChange={e => setF({ ...f, login: e.target.value })} />}
     <input className={inp} type="password" inputMode="numeric" placeholder="Code secret (4 à 8 chiffres)" value={f.pin} onChange={e => setF({ ...f, pin: e.target.value })} />
     {err && <p className="text-ko text-sm font-semibold">{err}</p>}<button disabled={wait} onClick={run} className={`${go} w-full text-lg`}>{wait ? '…' : mode === 'register' ? 'C\'est parti' : 'Me connecter'}</button>
-    <button className="w-full text-sm text-mute py-2" onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? "J'ai déjà un compte" : 'Créer un compte'}</button></div>
+    <button className={`${btn} w-full bg-white`} onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? "J'ai déjà un compte" : 'Créer un compte'}</button></div>
 }
 
 function Onb({ st, first, act, done }: { st: St; first: boolean; act: Act; done: () => void }) {
@@ -56,19 +59,18 @@ function Onb({ st, first, act, done }: { st: St; first: boolean; act: Act; done:
   const tog = (a: number[], set: (x: number[]) => void, v: number) => set(a.includes(v) ? a.filter(x => x !== v) : [...a, v])
   const next = async () => {
     if (step === 0 && pn.trim() && pn.trim() !== st.me.prenom) { try { await api('profil', { prenom: pn }) } catch { /* ignoré */ } }
-    if (step < 3) return setStep(step + 1)
+    if (step < 2) return setStep(step + 1)
     if (await act('profilSave', { days, hrs, likes }, 'Disponibilités enregistrées')) { boom(); done() }
   }
   const opt = (on: boolean) => `rounded-[22px] px-4 py-4 font-bold text-left transition shadow-[0_3px_0_rgba(23,35,59,.12)] ${on ? 'bg-ink text-white -rotate-1 scale-[1.03]' : 'bg-white'}`
-  return <div className="fixed inset-0 bg-bg z-40 flex flex-col p-6 max-w-md mx-auto"><div className="flex gap-1.5">{[0, 1, 2, 3].map(i => <i key={i} className={`flex-1 h-1.5 rounded-full ${i <= step ? 'bg-ink' : 'bg-ink/10'}`} />)}</div>
+  return <div className="fixed inset-0 bg-bg z-40 flex flex-col p-6 max-w-md mx-auto"><div className="flex gap-1.5">{[0, 1, 2].map(i => <i key={i} className={`flex-1 h-1.5 rounded-full ${i <= step ? 'bg-ink' : 'bg-ink/10'}`} />)}</div>
     <div key={step} className="flex-1 flex flex-col justify-center gap-5" style={{ animation: 'pop .45s cubic-bezier(.3,1.3,.5,1)' }}>
-      {step === 0 && <><Logo s="text-6xl" img="w-20 h-20" /><h2 className="text-4xl leading-none">Y'a qui pour <span className="text-coral">sortir ?</span></h2><p className="text-mute">Quelques questions rapides pour que tes potes sachent quand tu es dispo.</p><input className={inp} placeholder="Ton prénom" value={pn} onChange={e => setPn(e.target.value)} /></>}
+      {step === 0 && <><div className="flex justify-center"><Logo s="text-6xl" /></div><h2 className="text-4xl leading-none">Y'a qui pour <span className="text-coral">sortir ?</span></h2><p className="text-mute">Quelques questions rapides pour que tes potes sachent quand tu es dispo.</p><input className={inp} placeholder="Ton prénom" value={pn} onChange={e => setPn(e.target.value)} /></>}
       {step === 1 && <><h2 className="text-4xl leading-none">Des jours où <span className="text-coral">c'est mort</span> pour toi ?</h2><p className="text-mute">Touche les jours où tu ne peux jamais sortir.</p>
         <div className="flex gap-2">{[1, 2, 3, 4, 5, 6, 0].map(d => <button key={d} onClick={() => tog(days, setD, d)} className={`flex-1 aspect-square rounded-full f text-lg transition shadow-[0_3px_0_rgba(23,35,59,.12)] ${days.includes(d) ? 'bg-coral scale-110 -rotate-6 shadow-[0_5px_0_#17233B]' : 'bg-white'}`}>{DN[d][0]}</button>)}</div>
         <p className="text-mute text-sm">{days.length ? days.map(d => DN[d]).join(', ') : "Aucun jour : tu es libre tout le temps."}</p></>}
       {step === 2 && <><h2 className="text-4xl leading-none">Des heures où <span className="text-coral">c'est mort</span> ?</h2><p className="text-mute">Plusieurs choix possibles, ou aucun.</p><div className="grid grid-cols-2 gap-3">{HR.map((h, i) => <button key={i} onClick={() => tog(hrs, setH, i)} className={opt(hrs.includes(i))}>{h[0]}<small className="block text-xs font-medium opacity-70">{h[1]}</small></button>)}</div></>}
-      {step === 3 && <><h2 className="text-4xl leading-none">Tu kiffes <span className="text-coral">sortir</span> comment ?</h2><p className="text-mute">Facultatif.</p><div className="flex flex-wrap gap-2.5">{LK.map((l, i) => <button key={i} onClick={() => tog(likes, setL, i)} className={opt(likes.includes(i))}>{l}</button>)}</div></>}
-    </div><div className="flex gap-3">{step > (first ? 0 : 1) && <button className={`${btn} bg-white`} onClick={() => setStep(step - 1)}>←</button>}<button className={`${go} flex-1 text-lg`} onClick={next}>{step === 3 ? 'Terminer' : 'Suivant'}</button>{!first && <button className={`${btn} bg-white`} onClick={done}>✕</button>}</div></div>
+    </div><div className="flex gap-3">{step > (first ? 0 : 1) && <button className={`${btn} bg-white`} onClick={() => setStep(step - 1)}>←</button>}<button className={`${go} flex-1 text-lg`} onClick={next}>{step === 2 ? 'Terminer' : 'Suivant'}</button>{!first && <button className={`${btn} bg-white`} onClick={done}>✕</button>}</div></div>
 }
 
 const eur = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
@@ -90,9 +92,9 @@ function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode
 }
 
 function Card({ s, i, st, onOpen }: { s: Sortie; i: number; st: St; onOpen: (s: Sortie) => void }) {
-  const r = rep(st, s), mem = membersOf(st, s.groupeId), [bg, fg] = PAL[i % 4], d = Math.round((new Date(s.date + 'T12:00').getTime() - Date.now()) / 864e5)
+  const r = rep(st, s), mem = membersOf(st, s.groupeId), [bg, fg] = PAL[i % 4], d = dayDiff(todayParis(), s.date)
   const ring = (u: string) => r.a.includes(u) ? '#35B77A' : r.k.includes(u) ? '#EF6464' : 'rgba(255,255,255,.7)', tag = 'text-[11px] font-bold rounded-full px-3 py-1.5 bg-white/25'
-  return <button onClick={() => onOpen(s)} style={{ background: bg, color: fg }} className={`relative overflow-hidden text-left rounded-[34px] p-5 space-y-3 w-full active:scale-[.97] transition ${s.statut === 'annulée' ? 'opacity-50' : ''}`}>
+  return <button onClick={() => onOpen(s)} style={{ background: bg, color: fg, animationDelay: `${Math.min(i, 8) * 60}ms` }} className={`relative overflow-hidden text-left rounded-[34px] p-5 space-y-3 w-full active:scale-[.97] hover:-rotate-1 hover:-translate-y-1 transition animate-[rise_.5s_both] ${s.statut === 'annulée' ? 'opacity-50' : ''}`}>
     <span className="absolute -right-1 -top-1 text-[84px] rotate-12">{s.type === 'voyage' ? '✈️' : em(s.nom)}</span>
     <div className="flex flex-wrap gap-1.5 max-w-[75%]"><span className={tag}>{s.type === 'voyage' ? '✈️ Voyage' : 'Sortie'}</span><span className={tag}>{when(s)}{d >= 0 && ` · dans ${d} j`}</span>{s.budget > 0 && <span className={tag}>💶 ~{s.budget} €/pers</span>}{s.compteur && <span className={tag}>🧾 Dépenses</span>}{s.lien && <span className={tag}>🔗 Lien</span>}{s.statut !== 'proposition' && <span className={tag}>{s.statut}</span>}</div>
     <h3 className="text-3xl leading-none max-w-[70%] relative">{s.nom}</h3><p className="text-sm opacity-80">{s.lieu || 'Lieu à définir'} · idée de {nameOf(st, s.organisateur)}</p>
@@ -131,11 +133,11 @@ function Detail({ s, st, act, close, edit }: { s: Sortie; st: St; act: Act; clos
 }
 
 function Home({ st, gid, setGid, act, onOpen, go: goTab }: { st: St; gid: string; setGid: (g: string) => void; act: Act; onOpen: (s: Sortie) => void; go: (t: Tab) => void }) {
-  const today = new Date().toISOString().slice(0, 10), gn = (id: string) => st.groupes.find(g => g.id === id)?.nom, live = st.sorties.filter(s => last(s) >= today && s.statut !== 'annulée')
+  const today = todayParis(), gn = (id: string) => st.groupes.find(g => g.id === id)?.nom, live = st.sorties.filter(s => last(s) >= today && s.statut !== 'annulée')
   const todo = live.filter(s => !st.participations.some(p => p.sortieId === s.id && p.userId === st.me.id)), up = [...live].sort((a, b) => a.date.localeCompare(b.date)), nx = up[0]
   const mine = st.sorties.filter(s => s.groupeId === gid).sort((a, b) => a.date.localeCompare(b.date)); let owe = 0, due = 0
   st.sorties.forEach(s => bal(st, s).forEach(x => { if (x[0] === st.me.id) owe += x[2]; if (x[1] === st.me.id) due += x[2] }))
-  const dj = nx ? Math.max(0, Math.round((new Date(nx.date + 'T12:00').getTime() - Date.now()) / 864e5)) : 0, tile = 'bg-white rounded-[26px] p-4 space-y-1.5'
+  const dj = nx ? Math.max(0, dayDiff(today, nx.date)) : 0, tile = 'bg-white rounded-[26px] p-4 space-y-1.5'
   const rp = async (s: Sortie, x: string) => { if (await act('respond', { sortieId: s.id, reponse: x }, 'Réponse envoyée') && x === 'disponible') boom() }
   return <div className="p-5 space-y-4"><h1 className="text-5xl sm:text-6xl leading-[.95] pt-2">Salut <span className="text-acc">{st.me.prenom}</span> 👋</h1>
     {!st.groupes.length && <div className={card}><p>Tu n'as pas encore de groupe. Crée le tien ou rejoins celui de tes amis avec son code secret.</p><button className={go} onClick={() => goTab('groups')}>Créer ou rejoindre</button></div>}
@@ -155,7 +157,7 @@ function Home({ st, gid, setGid, act, onOpen, go: goTab }: { st: St; gid: string
 
 const isoOf = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 function Month({ off, setOff, cell, onPick }: { off: number; setOff: (n: number) => void; cell: (iso: string) => { bg: string; fg?: string; x?: string }; onPick: (iso: string) => void }) {
-  const n0 = new Date(), d0 = new Date(n0.getFullYear(), n0.getMonth() + off, 1), y = d0.getFullYear(), m = d0.getMonth(), nb = new Date(y, m + 1, 0).getDate(), lead = (d0.getDay() + 6) % 7
+  const [py, pm] = todayParis().split('-').map(Number), d0 = new Date(py, pm - 1 + off, 1), y = d0.getFullYear(), m = d0.getMonth(), nb = new Date(y, m + 1, 0).getDate(), lead = (d0.getDay() + 6) % 7
   return <div className="space-y-3"><div className="flex justify-between items-center"><button onClick={() => setOff(off - 1)} className="px-3 text-2xl">‹</button><h3 className="text-xl capitalize">{d0.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</h3><button onClick={() => setOff(off + 1)} className="px-3 text-2xl">›</button></div>
     <div className="grid grid-cols-7 gap-1.5 text-center text-xs text-mute font-semibold">{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((x, i) => <span key={i}>{x}</span>)}</div>
     <div className="grid grid-cols-7 gap-1.5">{Array.from({ length: lead }, (_, i) => <span key={'b' + i} />)}{Array.from({ length: nb }, (_, i) => { const k = isoOf(y, m, i + 1), c = cell(k); return <button key={i} onClick={() => onPick(k)} className="aspect-square rounded-full text-sm font-bold relative" style={{ background: c.bg, color: c.fg ?? '#17233B' }}>{i + 1}{c.x && <i className="absolute top-0 right-0.5 text-[11px] not-italic">{c.x}</i>}</button> })}</div></div>
@@ -180,11 +182,14 @@ function Form({ st, gid, setGid, act, edit, date0, close }: { st: St; gid: strin
     <button className={`${go} w-full text-lg`} onClick={async () => { if (!f.date) return; const lien = f.lien && !/^https?:\/\//i.test(f.lien) ? 'https://' + f.lien : f.lien; if (await act('sortieSave', { ...f, lien, groupeId: g, budget: Number(f.budget) || 0 }, edit ? 'Sortie modifiée' : 'Idée lancée !')) { if (!edit) boom(); close() } }}>Lancer l'idée →</button></Sheet>
 }
 
-function Cal({ st, gid, onNew, onOpen }: { st: St; gid: string; onNew: (d: string) => void; onOpen: (s: Sortie) => void }) {
-  const [off, setOff] = useState(0), [pop, setPop] = useState(''), mem = membersOf(st, gid).map(u => st.membres.find(m => m.id === u)).filter((m): m is M => !!m)
+function Cal({ st, gid, setGid, onNew, onOpen }: { st: St; gid: string; setGid: (g: string) => void; onNew: (d: string) => void; onOpen: (s: Sortie) => void }) {
+  const [off, setOff] = useState(0), [pop, setPop] = useState(''), [sel, setSel] = useState<string[]>([]), all = membersOf(st, gid).map(u => st.membres.find(m => m.id === u)).filter((m): m is M => !!m), mem = sel.length ? all.filter(m => sel.includes(m.id)) : all
+  useEffect(() => setSel([]), [gid])
   if (!gid) return <div className="p-5"><div className={card}>Rejoins un groupe pour voir son agenda.</div></div>
   const split = (k: string) => { const w = new Date(k + 'T12:00').getDay(); return { ok: mem.filter(m => !m.days.includes(w)), ko: mem.filter(m => m.days.includes(w)) } }, ev = (k: string) => st.sorties.filter(s => s.groupeId === gid && k >= s.date && k <= last(s)), sp = pop ? split(pop) : null
-  return <div className="p-5 space-y-4"><h1 className="text-5xl sm:text-6xl leading-[.95] pt-2">Quand on <span className="text-acc">peut ?</span></h1><div className={`${card} max-w-xl`}>
+  return <div className="p-5 space-y-4"><h1 className="text-5xl sm:text-6xl leading-[.95] pt-2">Quand on <span className="text-acc">peut ?</span></h1>
+    <div className="flex gap-2 overflow-x-auto p-0.5">{st.groupes.map(g => <button key={g.id} onClick={() => setGid(g.id)} className={`${btn} py-2.5 px-4 text-sm whitespace-nowrap ${g.id === gid ? 'bg-ink text-white' : 'bg-white'}`}>{g.nom}</button>)}</div>
+    <div className="flex flex-wrap gap-2"><button onClick={() => setSel([])} className={`rounded-full px-4 py-2 text-sm font-bold ${!sel.length ? 'bg-ink text-white' : 'bg-white'}`}>Tout le monde</button>{all.map(m => <button key={m.id} onClick={() => setSel(sel.includes(m.id) ? sel.filter(x => x !== m.id) : [...sel, m.id])} className={`flex items-center gap-1.5 rounded-full pr-3 text-sm font-bold ${sel.includes(m.id) ? 'bg-ink text-white' : 'bg-white'}`}><Av n={m.prenom} />{m.prenom}</button>)}</div><div className={`${card} max-w-xl`}>
     <Month off={off} setOff={setOff} onPick={setPop} cell={k => { const r = mem.length ? split(k).ok.length / mem.length : 0; return { bg: r === 1 ? '#35B77A' : r > .66 ? '#8FD9B3' : r > .33 ? '#FFD84D' : '#FF9B92', fg: r === 1 ? '#fff' : undefined, x: ev(k).length ? '★' : '' } }} />
     <p className="text-xs text-mute">Plus c'est vert, plus il y a de monde. ★ = sortie prévue. Touche un jour.</p></div>
     {sp && <Sheet onClose={() => setPop('')}><h2 className="text-3xl capitalize pr-10">{new Date(pop + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2><p><b className="f text-6xl text-ok">{sp.ok.length}</b> <span className="font-bold">/ {mem.length} partants</span></p>
@@ -192,16 +197,24 @@ function Cal({ st, gid, onNew, onOpen }: { st: St; gid: string; onNew: (d: strin
       {ev(pop).map((s, i) => <Card key={s.id} s={s} i={i} st={st} onOpen={x => { setPop(''); onOpen(x) }} />)}<button className={`${go} w-full`} onClick={() => { const d = pop; setPop(''); onNew(d) }}>Lancer une idée ce jour-là</button></Sheet>}</div>
 }
 
-function Groups({ st, gid, setGid, act }: { st: St; gid: string; setGid: (g: string) => void; act: Act }) {
+function Groups({ st, gid, setGid, act, joinId, clearJoin }: { st: St; gid: string; setGid: (g: string) => void; act: Act; joinId: string; clearJoin: () => void }) {
   const [nom, setNom] = useState(''), [code, setCode] = useState(''), [q, setQ] = useState(''), [res, setRes] = useState<{ id: string; nom: string }[] | null>(null), [pick, setPick] = useState(''), [jc, setJc] = useState('')
   const search = async () => { try { setRes(await api('groupSearch', { q })) } catch { setRes([]) } }
+  const [inv, setInv] = useState<{ nom: string; code: string } | null>(null), [cp, setCp] = useState(false)
+  useEffect(() => { if (joinId) api('groupInfo', { id: joinId }).then((g: any) => { setRes([g]); setPick(g.id) }).catch(() => { /* lien invalide */ }) }, [joinId])
+  const ig = inv ? st.groupes.find(x => x.nom.toLowerCase() === inv.nom.toLowerCase()) : null
+  const msg = ig && inv ? `Salut ! 👋 J'ai créé le groupe « ${ig.nom} » sur YAKI pour organiser nos sorties.\n\nPour nous rejoindre :\n1. Ouvre YAKI : ${location.origin + location.pathname}#join=${ig.id}\n2. Crée ton compte (juste ton prénom)\n3. Rejoins le groupe « ${ig.nom} » avec le code secret : ${inv.code}\n\nÀ très vite ! 🎉` : ""
   return <div className="p-5 space-y-4"><h1 className="text-5xl leading-[.95] pt-2">Les<br /><span className="text-acc">groupes</span></h1>
+    {ig && inv && <Sheet onClose={() => setInv(null)}><p className="text-6xl">🎉</p><h2 className="text-3xl leading-none pr-10">Groupe créé !</h2><p className="text-mute text-sm">Envoie ce message à tes amis (WhatsApp, SMS…). Le lien ouvre YAKI avec ton groupe déjà sélectionné : il ne leur reste qu'à entrer le code.</p>
+      <pre className="bg-white rounded-[24px] p-4 text-sm whitespace-pre-wrap font-sans">{msg}</pre>
+      <button className={`${go} w-full`} onClick={() => navigator.clipboard?.writeText(msg).then(() => setCp(true))}>{cp ? 'Copié ✓' : 'Copier le message'}</button>
+      {typeof navigator.share === 'function' && <button className={`${btn} w-full bg-white`} onClick={() => navigator.share({ text: msg }).catch(() => { /* annulé */ })}>Partager…</button>}</Sheet>}
     {st.groupes.map(g => <div key={g.id} className={card}><button onClick={() => setGid(g.id)} className="w-full text-left flex justify-between items-center"><span className="f text-2xl">{g.nom}</span><span className="text-sm text-mute">{g.n} membres{g.id === gid && ' · actif'}</span></button><div className="flex flex-wrap gap-2">{membersOf(st, g.id).map(u => <Pill key={u} n={nameOf(st, u)} />)}</div>
       <button className="text-sm text-ko font-semibold" onClick={() => confirm('Quitter ce groupe ?') && act('groupLeave', { groupeId: g.id }, 'Groupe quitté')}>Quitter</button></div>)}
     <div className={card}><h3 className="text-2xl">Rejoindre un groupe</h3><div className="flex gap-2"><input className={inp} placeholder="Nom du groupe" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} /><button className={go} onClick={search}>OK</button></div>
       {res && res.length === 0 && <p className="text-sm text-mute">Aucun groupe trouvé.</p>}{res?.map(g => <button key={g.id} onClick={() => setPick(g.id)} className={`${btn} w-full text-left ${pick === g.id ? 'bg-ink text-white' : 'bg-bg'}`}>{g.nom}</button>)}
-      {pick && <><input className={inp} placeholder="Code secret du groupe" value={jc} onChange={e => setJc(e.target.value)} /><button className={`${go} w-full`} onClick={async () => { if (await act('groupJoin', { groupeId: pick, code: jc }, 'Bienvenue dans le groupe !')) { boom(); setGid(pick); setPick(''); setRes(null); setJc(''); setQ('') } }}>Rejoindre</button></>}</div>
-    <div className={card}><h3 className="text-2xl">Créer un groupe</h3><input className={inp} placeholder="Nom du groupe" value={nom} onChange={e => setNom(e.target.value)} /><input className={inp} placeholder="Code secret à donner à tes amis" value={code} onChange={e => setCode(e.target.value)} /><button className={`${go} w-full`} onClick={async () => { if (await act('groupCreate', { nom, code }, 'Groupe créé')) { setNom(''); setCode('') } }}>Créer</button></div></div>
+      {pick && <><input className={inp} placeholder="Code secret du groupe" value={jc} onChange={e => setJc(e.target.value)} /><button className={`${go} w-full`} onClick={async () => { if (await act('groupJoin', { groupeId: pick, code: jc }, 'Bienvenue dans le groupe !')) { boom(); setGid(pick); setPick(''); setRes(null); setJc(''); setQ(''); clearJoin() } }}>Rejoindre</button></>}</div>
+    <div className={card}><h3 className="text-2xl">Créer un groupe</h3><input className={inp} placeholder="Nom du groupe" value={nom} onChange={e => setNom(e.target.value)} /><input className={inp} placeholder="Code secret à donner à tes amis" value={code} onChange={e => setCode(e.target.value)} /><button className={`${go} w-full`} onClick={async () => { if (await act('groupCreate', { nom: nom.trim(), code }, 'Groupe créé')) { setInv({ nom: nom.trim(), code }); setNom(''); setCode('') } }}>Créer</button></div></div>
 }
 
 function Moi({ st, act, edit, logout }: { st: St; act: Act; edit: () => void; logout: () => void }) {
@@ -214,24 +227,25 @@ function Moi({ st, act, edit, logout }: { st: St; act: Act; edit: () => void; lo
 
 export default function App() {
   const [st, setSt] = useState<St | null>(null), [authed, setAuthed] = useState(!!localStorage.getItem('yaki_token')), [tab, setTab] = useState<Tab>('home')
-  const [open, setOpen] = useState(''), [form, setForm] = useState<{ edit: Sortie | null; date: string } | null>(null), [editing, setEditing] = useState(false), [msg, setMsg] = useState('')
+  const [open, setOpen] = useState(''), [form, setForm] = useState<{ edit: Sortie | null; date: string } | null>(null), [editing, setEditing] = useState(false), [msg, setMsg] = useState(''), [busyA, setBusyA] = useState(false), [joinId, setJoinId] = useState(() => (location.hash.match(/join=([\w-]+)/) || [])[1] || '')
   const [gid, setGidS] = useState(localStorage.getItem('yaki_gid') || ''), setGid = (g: string) => { localStorage.setItem('yaki_gid', g); setGidS(g) }
   const load = useCallback(async () => { try { setSt(await api('state')) } catch (e: any) { if (/Session|connecté/.test(e.message)) { localStorage.removeItem('yaki_token'); setAuthed(false) } else setMsg(e.message) } }, [])
   useEffect(() => { if (authed) { load(); const t = setInterval(load, 30000); return () => clearInterval(t) } }, [authed, load])
   useEffect(() => { if (msg) { const t = setTimeout(() => setMsg(''), 2500); return () => clearTimeout(t) } }, [msg])
   useEffect(() => { if (st && st.groupes.length && !st.groupes.some(g => g.id === gid)) setGid(st.groupes[0].id) }, [st, gid])
-  const act: Act = async (a, b, ok = 'Fait ✓') => { try { await api(a, b); setMsg(ok); await load(); return true } catch (e: any) { setMsg(e.message); return false } }
+  useEffect(() => { if (joinId && st?.me.done) setTab('groups') }, [joinId, st?.me.done])
+  const act: Act = async (a, b, ok = 'Fait ✓') => { setBusyA(true); try { await api(a, b); setMsg(ok); await load(); return true } catch (e: any) { setMsg(e.message); return false } finally { setBusyA(false) } }
   if (!authed) return <Auth onDone={() => setAuthed(true)} />
-  if (!st) return <div className="p-24 flex justify-center"><Logo s="text-5xl" /></div>
-  if (!st.me.done || editing) return <Onb st={st} first={!st.me.done} act={act} done={() => setEditing(false)} />
+  if (!st) return <Loader />
+  if (!st.me.done || editing) return <><Onb st={st} first={!st.me.done} act={act} done={() => setEditing(false)} />{busyA && <Loader />}</>
   const opened = st.sorties.find(s => s.id === open)
   const tabs: [Tab | 'plus', string][] = [['home', 'Accueil'], ['cal', 'Agenda'], ['plus', '＋'], ['groups', 'Groupes'], ['me', 'Moi']]
   return <div className="max-w-5xl mx-auto min-h-screen pb-32">
     <header className="flex justify-between items-center px-5 pt-5"><Logo /><button onClick={load} className="text-sm text-mute">Actualiser</button></header>
-    {tab === 'home' && <Home st={st} gid={gid} setGid={setGid} act={act} onOpen={s => setOpen(s.id)} go={setTab} />}{tab === 'cal' && <Cal st={st} gid={gid} onNew={d => setForm({ edit: null, date: d })} onOpen={s => setOpen(s.id)} />}
-    {tab === 'groups' && <Groups st={st} gid={gid} setGid={setGid} act={act} />}{tab === 'me' && <Moi st={st} act={act} edit={() => setEditing(true)} logout={() => { localStorage.removeItem('yaki_token'); setAuthed(false); setSt(null) }} />}
+    {tab === 'home' && <Home st={st} gid={gid} setGid={setGid} act={act} onOpen={s => setOpen(s.id)} go={setTab} />}{tab === 'cal' && <Cal st={st} gid={gid} setGid={setGid} onNew={d => setForm({ edit: null, date: d })} onOpen={s => setOpen(s.id)} />}
+    {tab === 'groups' && <Groups st={st} gid={gid} setGid={setGid} act={act} joinId={joinId} clearJoin={() => { setJoinId(''); history.replaceState(null, '', location.pathname) }} />}{tab === 'me' && <Moi st={st} act={act} edit={() => setEditing(true)} logout={() => { localStorage.removeItem('yaki_token'); setAuthed(false); setSt(null) }} />}
     {opened && <Detail s={opened} st={st} act={act} close={() => setOpen('')} edit={s => { setOpen(''); setForm({ edit: s, date: s.date }) }} />}
     {form && <Form st={st} gid={gid} setGid={setGid} act={act} edit={form.edit} date0={form.date} close={() => setForm(null)} />}
-    {msg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-ink text-sun rounded-full px-5 py-3 z-50 text-sm font-bold shadow-lg">{msg}</div>}
-    <nav className="fixed bottom-3 inset-x-3 max-w-md mx-auto bg-ink rounded-full grid grid-cols-5 p-1.5 z-20 items-center shadow-xl">{tabs.map(([k, l]) => k === 'plus' ? <button key={k} onClick={() => setForm({ edit: null, date: '' })} className="rounded-full bg-coral text-ink text-2xl py-2 -translate-y-2 -rotate-6 shadow-[0_5px_0_rgba(0,0,0,.25)] font-bold">{l}</button> : <button key={k} onClick={() => setTab(k)} className={`rounded-full text-xs font-bold py-3.5 ${tab === k ? 'bg-white text-ink' : 'text-white/60'}`}>{l}</button>)}</nav></div>
+    {busyA && <Loader />}{msg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-ink text-sun rounded-full px-5 py-3 z-50 text-sm font-bold shadow-lg">{msg}</div>}
+    <nav className="fixed bottom-3 inset-x-3 max-w-md mx-auto bg-ink rounded-full grid grid-cols-5 p-1.5 z-20 items-center shadow-xl">{tabs.map(([k, l]) => k === 'plus' ? <button key={k} onClick={() => setForm({ edit: null, date: '' })} className="rounded-full bg-coral text-ink text-2xl py-2 shadow-[0_4px_0_rgba(0,0,0,.25)] font-bold active:translate-y-0.5">{l}</button> : <button key={k} onClick={() => setTab(k)} className={`rounded-full text-xs font-bold py-3.5 ${tab === k ? 'bg-white text-ink' : 'text-white/60'}`}>{l}</button>)}</nav></div>
 }
